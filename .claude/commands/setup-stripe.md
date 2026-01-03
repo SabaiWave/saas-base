@@ -16,7 +16,6 @@ You are working inside a Next.js 15 App Router SaaS using:
 FIRST: ASK THESE QUESTIONS (ONLY THESE)
 
 1. Product pricing:
-
    - Price ID(s) already created in Stripe? If yes, list them.
    - If no, assume we will add env placeholders and proceed.
 
@@ -42,16 +41,15 @@ STEP 0 — EXPLORE
 
 STEP 1 — PRISMA BILLING MODELS
 Add models to prisma/schema.prisma (or adapt if present):
+If models already exist, do NOT create a new migration. Proceed to STEP 2.
 
 - StripeCustomer:
-
   - id (uuid)
   - userId (map user_id, unique)
   - stripeCustomerId (unique)
   - createdAt/updatedAt
 
 - StripeEvent:
-
   - id (uuid)
   - stripeEventId (unique) <-- idempotency key
   - type
@@ -98,7 +96,6 @@ STEP 3 — CHECKOUT + PORTAL ROUTES
 Create route handlers:
 
 - app/api/stripe/checkout/route.ts
-
   - Auth required
   - Creates checkout session for logged-in user
   - Returns URL
@@ -107,10 +104,22 @@ Create route handlers:
   - Auth required
   - Returns billing portal URL
 
+- Billing Portal session MUST include a valid return_url
+  (e.g. /settings or /pricing).
+- User must always be redirected back to the app after portal actions.
+
+NOTE (Local Dev):
+
+- Billing Portal may not redirect back to localhost after cancel.
+- This is a Stripe limitation.
+- Verify cancel behavior via:
+  - Webhook updates (cancel_at_period_end)
+  - UI state after manual return
+
 STEP 4 — WEBHOOK ROUTE (SOURCE OF TRUTH)
 Create:
 
-- app/api/stripe/webhook/route.ts
+- Prefer webhook location: app/api/webhooks/stripe/route.ts
 
 Requirements:
 
@@ -126,6 +135,13 @@ Requirements:
   - customer.subscription.deleted
 - Update Subscription table accordingly (upsert by stripeSubscriptionId)
 - Ensure mapping of Stripe customer to user (StripeCustomer table)
+- Checkout must set client_reference_id = kindeUser.id for mapping
+- Local dev requires running: stripe listen --forward-to localhost:3000/api/webhooks/stripe
+- Webhook secret (whsec...) changes every session and must be updated in .env.local
+- If webhook is not running, UI will remain FREE after checkout
+- Webhook MUST persist cancel_at_period_end from Stripe subscription updates.
+- cancel_at_period_end = true MUST NOT revoke entitlements immediately.
+- Entitlements remain active until current_period_end passes.
 
 STEP 5 — PRICING PAGE + CTA
 Create:
