@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toggleTask, deleteTask } from "@/app/actions/tasks";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 
 interface Task {
@@ -21,6 +22,11 @@ interface TaskListProps {
 export function TaskList({ tasks }: TaskListProps) {
   const [optimisticTasks, setOptimisticTasks] = useState(tasks);
   const { toast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    setOptimisticTasks(tasks);
+  }, [tasks]);
 
   const handleToggle = async (taskId: string) => {
     const taskIndex = optimisticTasks.findIndex((t) => t.id === taskId);
@@ -49,6 +55,7 @@ export function TaskList({ tasks }: TaskListProps) {
         title: "Task deleted",
         description: "The task has been deleted successfully.",
       });
+      router.refresh();
     } else {
       toast({
         title: "Error",

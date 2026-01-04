@@ -92,7 +92,7 @@ export default async function DashboardPage() {
             </CardHeader>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 items-start">
             {projects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}

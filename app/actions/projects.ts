@@ -114,10 +114,24 @@ export async function deleteProject(
         id: validated.id,
         userId: user.id,
       },
+      include: {
+        tasks: {
+          where: {
+            completed: false,
+          },
+        },
+      },
     });
 
     if (!project) {
       return { success: false, error: "Project not found" };
+    }
+
+    if (project.tasks.length > 0) {
+      return {
+        success: false,
+        error: "Complete or delete all tasks before deleting this project.",
+      };
     }
 
     await prisma.project.delete({
