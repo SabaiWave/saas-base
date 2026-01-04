@@ -335,13 +335,29 @@ Allowed files:
 - app/globals.css
 - tailwind.config.ts (only if needed for token mapping)
 - minimal UI toggle component (optional)
-  Not allowed:
+
+Not allowed:
+
 - touching Stripe/auth/DB logic during theme work
 
 QUALITY GATE
 
 - npm run lint passes
 - npm run build passes
+
+======================================================================
+
+ROOT LAYOUT REQUIREMENT
+
+The <body> element MUST include token-based theme classes:
+
+- bg-background
+- text-foreground
+- min-h-screen
+
+Example:
+
+  <body className={`${font.className} min-h-screen bg-background text-foreground antialiased`}>
 
 ======================================================================
 
