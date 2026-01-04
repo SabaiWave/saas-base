@@ -70,6 +70,7 @@ Rules:
 - Do not hardcode colors in components.
 - Preserve dark mode via .dark tokens.
 - Keep diffs minimal and isolated.
+- Ensure <body> applies bg-background and text-foreground so theme tokens are visually effective.
 
 Output:
 

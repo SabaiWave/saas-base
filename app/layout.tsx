@@ -6,7 +6,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "FocusFlow - Simple Workflow Tracker",
-  description: "A lightweight personal workflow tracker for solo builders and freelancers",
+  description:
+    "A lightweight personal workflow tracker for solo builders and freelancers",
 };
 
 export default function RootLayout({
@@ -16,7 +17,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body
+        className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}
+      >
+        {children}
+      </body>
     </html>
   );
 }
