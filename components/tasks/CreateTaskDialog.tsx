@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createTask } from "@/app/actions/tasks";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
 interface CreateTaskDialogProps {
@@ -26,6 +27,7 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +42,7 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
       });
       setTitle("");
       setOpen(false);
+      router.refresh();
     } else {
       toast({
         title: "Error",
