@@ -1,87 +1,147 @@
-Build a production-ready SaaS MVP called FocusFlow.
+# FocusFlow — Backend Prompt
 
-PRODUCT
+Build the backend for a production-ready SaaS MVP called **FocusFlow**.
 
-- What it does:
-  A lightweight personal workflow tracker that helps users organize projects and tasks.
+This prompt defines **backend deliverables and correctness rules**.
+Global engineering standards (tenancy, Stripe source-of-truth, etc.) live in `claude.md` and must be followed.
 
-- Core problem:
-  Users want a simple, fast way to track what they’re working on without heavy project management tools.
+---
 
-- Target users:
-  Solo builders, freelancers, and professionals.
+## Product Summary
 
-- Core features:
+FocusFlow is a lightweight workflow tracker:
 
-  1. Projects (create, list, update, delete)
-  2. Tasks (create, list, update, complete)
-  3. Usage limits (Free vs Plus)
-  4. Billing via Stripe subscriptions
+- Projects (CRUD)
+- Tasks within Projects (CRUD + complete toggle)
+- Free vs Plus limits
+- Stripe subscriptions for Plus
 
-- Monetization:
-  Free plan with a 3-project limit
-  Plus plan with unlimited projects
+Plan rules:
 
-WORKFLOW
-Use: Explore → Plan → Code → Verify → Commit
+- Free: max **3 projects**
+- Plus: **unlimited projects**
+
+---
+
+## Execution Workflow
+
+Follow: **Explore → Plan → Code → Verify → Commit**
 Proceed automatically unless blocked.
-Pause only at defined checkpoints.
+Stop only at checkpoints.
 
-CHECKPOINTS
+---
 
-1. After Prisma schema + migrations
-2. After Projects + Tasks are fully clickable
-3. After Stripe billing + entitlements
-4. Before final polish
+## Checkpoints (Hard Stops)
 
-STEP 1: DATA MODEL (PRISMA)
-Define models:
+1. Prisma schema + migrations complete
+2. Server Actions for Projects + Tasks fully working (end-to-end)
+3. Stripe billing + webhook-driven entitlements working
+4. Final verification before polish / refactor
 
-- Project (user-owned)
-- Task (belongs to Project)
-- StripeCustomer
-- Subscription
-- StripeEvent (idempotency)
+---
 
-Rules:
+## Data Model (Prisma)
 
-- Every user-owned model includes userId mapped to user_id
-- Index by userId
-- Use Prisma migrations only
+Models required:
 
-STEP 2: CORE FEATURES
-Projects:
+- `Project` (user-owned)
+- `Task` (belongs to Project)
+- `StripeCustomer` (user ↔ customer mapping)
+- `Subscription` (current entitlement state)
+- `StripeEvent` (stores processed `event.id` for idempotency)
 
-- CRUD via Server Actions
-- Enforce Free plan limit (3 projects)
-- Shadcn UI components
-- Loading, empty, error states
+Minimum fields (high-level intent, not exhaustive):
 
-Tasks:
+- Project: `id`, `user_id`, `name`, timestamps
+- Task: `id`, `user_id`, `project_id`, `title`, `completed`, timestamps
+- StripeCustomer: `user_id`, `stripe_customer_id`
+- Subscription: `user_id`, `stripe_customer_id`, `status`, `price_id`, `current_period_end`, `cancel_at_period_end`
+- StripeEvent: `event_id`, timestamps
 
-- CRUD within a Project
-- Toggle completion
-- Basic task list UI
+DB rules:
 
-STEP 3: BILLING
+- User-owned models include `userId @map("user_id")` and `@@index([userId])`
+- `Task` must also include `projectId @map("project_id")` + index on `projectId` (and usually compound index `[userId, projectId]`)
+- Use migrations only (no manual DB edits)
 
-- Stripe checkout + portal
-- Webhooks as source of truth
-- Idempotent event handling
-- Entitlements enforced in server actions
+---
 
-STEP 4: QUALITY + RELEASE
+## Server Actions (Core Backend API)
 
-- npm run lint passes
-- npm run build passes
-- .env.example created
-- No secrets in client
-- Mobile responsive
+Implement Server Actions for:
 
-SUCCESS CRITERIA
+### Projects
 
-- Auth works
-- Tenancy isolation enforced
-- CRUD works end-to-end
-- Stripe correctly gates limits
-- Ready to deploy
+- create
+- list (scoped to user)
+- update (scoped)
+- delete (scoped)
+- enforce free-plan limit on create (max 3)
+
+### Tasks
+
+- create within project
+- list by project (scoped)
+- update (scoped)
+- delete (scoped)
+- toggle completion (scoped)
+
+Backend correctness requirements:
+
+- All actions authenticate
+- All reads/writes scoped by `user_id`
+- Never accept `user_id` from client
+- Validate inputs with Zod (server-side)
+- After mutations, trigger cache invalidation appropriately (e.g., `revalidatePath`) so UI can update without refresh (UI will call these actions; backend must provide the revalidation hooks)
+- Revalidate the specific route that reads the mutated data (list + detail paths as applicable)
+
+---
+
+## Billing + Entitlements (Stripe)
+
+Goals:
+
+- Checkout + Billing Portal are wired
+- Webhooks drive entitlement state
+- Server Actions enforce plan limits based on entitlement state (never frontend)
+
+Webhook handler responsibilities:
+
+- Verify Stripe signature
+- Store and dedupe `event.id` (idempotency)
+- Maintain `StripeCustomer` mapping
+- Maintain `Subscription` state (status, period end, cancel flag)
+- On unknown/ambiguous states: default to **no entitlement**
+
+Entitlement logic used by Server Actions:
+
+- Plus access if subscription status is `active` or `trialing`
+- Free otherwise
+- Free plan limit enforced only when creating new projects
+
+Local dev requirements:
+
+- Stripe events only flow when `stripe listen` is running
+
+---
+
+## Quality Gate (Release Readiness)
+
+Must pass:
+
+- `npm run lint`
+- `npm run build`
+- `.env.example` exists
+- No secrets exposed to client
+- Backend logic is deploy-ready on Vercel
+
+---
+
+## Success Criteria (Backend)
+
+- Auth enforced in every Server Action
+- Tenancy isolation: impossible to access another user’s projects/tasks
+- Free plan limit is enforced server-side
+- Stripe webhooks correctly update subscription state
+- Subscription state correctly gates project creation
+- Clean, predictable error handling for invalid inputs and unauthorized access
