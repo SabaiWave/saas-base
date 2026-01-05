@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tasks     Task[]
+
+  @@index([userId])
+  @@map("projects")
+}
+
+model Task {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  projectId String   @map("project_id")
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("tasks")
+}
+
+model StripeCustomer {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  stripeCustomerId String   @unique @map("stripe_customer_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("stripe_customers")
+}
+
+model Subscription {
+  id                     String   @id @default(uuid())
+  userId                 String   @map("user_id")
+  stripeSubscriptionId   String   @unique @map("stripe_subscription_id")
+  status                 String
+  priceId                String?  @map("price_id")
+  currentPeriodEnd       DateTime? @map("current_period_end")
+  cancelAtPeriodEnd      Boolean   @default(false) @map("cancel_at_period_end")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model StripeEvent {
+  id             String   @id @default(uuid())
+  stripeEventId  String   @unique @map("stripe_event_id")
+  type           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("stripe_events")
+}
