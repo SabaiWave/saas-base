@@ -1,7 +1,8 @@
 # SaaS MVP Development Guide (Claude Code Contract)
 
-This project is a production-ready SaaS MVP built with strict conventions.
-Follow this file exactly. When in doubt, prefer safety, clarity, and simplicity.
+This repository is a production-ready SaaS MVP baseline.All development must follow this contract.
+
+When in doubt: **security > correctness > clarity > speed**.
 
 ======================================================================
 
@@ -9,14 +10,14 @@ TECH STACK (FIXED)
 
 Frontend:
 
-- Next.js 15 (App Router)
-- React
+- Next.js (App Router)
+- React 18
 - TypeScript (strict)
 
 Styling:
 
 - Tailwind CSS
-- Shadcn UI components
+- shadcn/ui
 
 Database:
 
@@ -81,8 +82,10 @@ emails/ # React Email templates
 
 lib/ # Utilities (auth, stripe, helpers)
 
-Do not invent new top-level directories.
-Do not place Stripe logic outside the webhook handler.
+Rules:
+
+- Do not invent new top-level directories.
+- Do not place Stripe logic outside the webhook handler.
 
 ======================================================================
 
@@ -115,9 +118,6 @@ DATABASE RULES (SUPABASE + PRISMA)
 - Prisma ORM is mandatory
 - snake_case for database column names
 - camelCase for Prisma model fields
-- Every user-owned table MUST include `user_id`
-- Never accept `user_id` from the client
-- Always scope queries by authenticated `user_id`
 - Use foreign keys and indexes explicitly
 - Use transactions for multi-step operations
 - Prisma migrations are the single source of truth
@@ -177,11 +177,13 @@ where: { userId: user.id }
 });
 }
 
-Never skip this check.
+Rules:
+
+- Never skip auth checks.
 
 ======================================================================
 
-STRIPE RULES (NON-NEGOTIABLE)
+STRIPE CONTRACT (NON-NEGOTIABLE)
 
 Stripe correctness matters more than UI polish.
 
@@ -227,20 +229,6 @@ Violating this is a billing correctness bug.
 
 ======================================================================
 
-STRIPE LOCAL DEV LIMITATION
-
-- Stripe Billing Portal may NOT redirect back to localhost after actions
-  (e.g. cancel subscription).
-- This is expected behavior and NOT a bug.
-- In production (real domain), return_url works correctly.
-
-Local dev workaround:
-
-- Manually navigate back to the app
-- OR use HTTPS tunneling (e.g. ngrok)
-
-======================================================================
-
 INPUT VALIDATION
 
 - Validate all inputs with Zod
@@ -270,82 +258,18 @@ This repo uses shadcn theme tokens via CSS variables in:
 
 - app/globals.css
 
-Dark mode is supported via:
-
-- .dark class (Tailwind class strategy)
-
 Rules:
 
 - Theme changes MUST be made by editing token values in app/globals.css.
 - Do NOT hardcode hex colors across components/pages unless explicitly requested.
-- Use Shadcn UI components only; they must inherit from the tokens.
 - Keep business logic unchanged during UI-only work.
+- Dark mode is supported via .dark class (Tailwind class strategy)
 
-TOKENS TO SET (MINIMUM)
-Light + Dark:
-
-- --background
-- --foreground
-- --card
-- --card-foreground
-- --primary
-- --primary-foreground
-- --secondary
-- --secondary-foreground
-- --muted
-- --muted-foreground
-- --accent
-- --accent-foreground
-- --border
-- --input
-- --ring
-- --destructive
-- --destructive-foreground
-- --radius (optional)
-
-DARK MODE TOGGLE (OPTIONAL)
-If adding a UI toggle:
-
-- Use class strategy: add/remove "dark" on <html>
-- Store preference in localStorage
-- Default to system preference if unset
-- Implement toggle as a small isolated client component (no app-wide client conversion)
-
-HOW TO PROVIDE A PALETTE (USER INPUT FORMAT)
-When the user provides a theme, they may supply either:
-A) HSL token values (preferred, matches globals.css):
-
-- primary: 221.2 83.2% 53.3%
-- background: 222.2 84% 4.9%
-  etc.
-
-OR
-
-B) Hex codes:
-
-- primary: #6D28D9
-- background: #0B1220
-  etc.
-
-If hex is provided, convert to HSL and update globals.css tokens accordingly.
-
-SCOPE FOR UI-ONLY CHANGES
-Allowed files:
+Allowed UI-only files:
 
 - app/globals.css
-- tailwind.config.ts (only if needed for token mapping)
-- minimal UI toggle component (optional)
-
-Not allowed:
-
-- touching Stripe/auth/DB logic during theme work
-
-QUALITY GATE
-
-- npm run lint passes
-- npm run build passes
-
-======================================================================
+- tailwind.config.ts (if required)
+- Small isolated toggle component (optional)
 
 ROOT LAYOUT REQUIREMENT
 
@@ -357,7 +281,7 @@ The <body> element MUST include token-based theme classes:
 
 Example:
 
-  <body className={`${font.className} min-h-screen bg-background text-foreground antialiased`}>
+  <body className="min-h-screen bg-background text-foreground antialiased">
 
 ======================================================================
 
@@ -374,23 +298,74 @@ EDITING RULES (TOKEN EFFICIENCY)
 
 - Do NOT rewrite unchanged files
 - Prefer minimal diffs
-- Briefly explain changes when editing
+- Explain changes briefly
 - Ask a question ONLY if blocked
 - Otherwise, make a reasonable assumption and proceed
 - Avoid long summaries during builds
 - Prefer short diffs + next step over recaps
 - Do not re-explain architecture unless it changes
+- Fix lint/build errors immediately
+
+======================================================================
+
+QUALITY GATE (MANDATORY)
+
+Before proceeding to the next step:
+
+- npm run lint passes
+- npm run build passes
+- Fix errors immediately before continuing
+- Stripe webhook idempotency verified (event.id uniqueness)
+- Free plan limits enforced server-side
+- No server action accepts userId from client
+
+Do NOT build on broken code.
+
+======================================================================
+
+DEPLOYMENT NOTES
+
+Vercel Compatibility (MANDATORY)
+
+To ensure Vercel compatibilit use:
+
+- "next": "^14.2.6",
+- "react": "18.2.0",
+- "react-dom": "18.2.0"
+
+next.config must be CommonJS (next.config.js):
+
+```bash
+@type {import('next').NextConfig} _/
+const nextConfig = {
+reactStrictMode: true,
+};
+
+module.exports = nextConfig;
+```
+
+ENVIRONMENT NOTES
+
+- TypeScript next.config.ts is not supported in all Vercel build paths.
+- Build passes locally
+- No TypeScript errors
+- Environment variables set in Vercel
+- Kinde callback URLs configured
+- Stripe webhook configured
+- Prisma migrations applied
 
 ======================================================================
 
 COMMON COMMANDS
 
 Development:
+
 npm run dev
 npm run lint
 npm run build
 
 Database:
+
 npx prisma migrate dev
 npx prisma migrate deploy
 npx prisma studio
@@ -411,38 +386,7 @@ Prefer these commands when applicable:
 - /review-code (security + quality review)
 - /prune (remove unused modules after cloning base)
 
-All commands must follow this CLAUDE.md contract:
-
-- Tenancy isolation (user_id)
-- Auth checks in every server action
-- Zod validation
-- Stripe webhook signature + idempotency
-- Quality Gate: npm run lint + npm run build must pass
-
-QUALITY GATE (MANDATORY)
-
-Before proceeding to the next step:
-
-- npm run lint passes
-- npm run build passes
-- Fix errors immediately before continuing
-- Ensure a production-ready .gitignore exists for Next.js + Prisma. Create or update it if missing.
-- Stripe webhook idempotency verified (event.id uniqueness)
-- Free plan limits enforced server-side
-- No server action accepts userId from client
-
-Do NOT build on broken code.
-
-======================================================================
-
-DEPLOYMENT CHECKLIST
-
-- Build passes locally
-- No TypeScript errors
-- Environment variables set in Vercel
-- Kinde callback URLs configured
-- Stripe webhook configured
-- Prisma migrations applied
+All commands must follow this CLAUDE.md contract
 
 ======================================================================
 
